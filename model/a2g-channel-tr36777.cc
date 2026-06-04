@@ -46,12 +46,8 @@ GetLosCoeffs(A2gScenario s, double hUtM)
     switch (s)
     {
     case A2gScenario::UMa_AV:
-        // h_UT < 22.5 m → standard 3GPP UMa LOS (38.901 §7.4.1)
-        // h_UT ≥ 22.5 m: PL_LOS = 28.0 + 22*log10(d3D) + 20*log10(fc)
-        if (hUtM < 22.5)
-        {
-            return {28.0, 22.0};
-        }
+        // TR 36.777 table B-1 gives a single UMa-AV LOS coefficient set that
+        // applies to all UT heights: PL_LOS = 28.0 + 22*log10(d3D) + 20*log10(fc).
         return {28.0, 22.0};
     case A2gScenario::RMa_AV:
         // PL_LOS = max(23.9 - 1.8*log10(h_UT), 20) * log10(d3D) + 20*log10(fc)
@@ -111,9 +107,19 @@ A2gChannelTr36777::PathLossDb(A2gScenario scenario, A2gLink link,
     {
         NS_LOG_WARN("fcGHz=" << fcGHz << " outside TR 36.777 validation band");
     }
-    LosCoeffs c = (link == A2gLink::LOS) ? GetLosCoeffs(scenario, hUtM)
-                                         : GetNlosCoeffs(scenario, hUtM);
-    return c.alpha + c.beta * std::log10(d3dM) + 20.0 * std::log10(fcGHz);
+    const double fcTermDb = 20.0 * std::log10(fcGHz);
+    const LosCoeffs los = GetLosCoeffs(scenario, hUtM);
+    const double losDb = los.alpha + los.beta * std::log10(d3dM) + fcTermDb;
+    if (link == A2gLink::LOS)
+    {
+        return losDb;
+    }
+    // TR 36.777 defines NLOS path loss as max(PL_LOS, PL'_NLOS): an obstructed
+    // link can never have LESS loss than the LOS reference. At short range the
+    // raw NLOS formula can dip below LOS, so apply the spec-mandated floor.
+    const LosCoeffs nl = GetNlosCoeffs(scenario, hUtM);
+    const double nlosDb = nl.alpha + nl.beta * std::log10(d3dM) + fcTermDb;
+    return std::max(losDb, nlosDb);
 }
 
 double
