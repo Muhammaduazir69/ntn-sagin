@@ -4,6 +4,7 @@
  */
 #include "ns3/a2g-channel-tr36777.h"
 #include "ns3/aeronautical-scenario.h"
+#include "ns3/boolean.h"
 #include "ns3/box.h"
 #include "ns3/constant-position-mobility-model.h"
 #include "ns3/double.h"
@@ -11,12 +12,28 @@
 #include "ns3/haps-trajectory-mobility-model.h"
 #include "ns3/haps-trajectory-trace.h"
 #include "ns3/multi-layer-router.h"
+#include "ns3/data-rate.h"
+#include "ns3/error-model.h"
+#include "ns3/inet-socket-address.h"
+#include "ns3/internet-stack-helper.h"
+#include "ns3/ipv4-address-helper.h"
+#include "ns3/ipv4-global-routing-helper.h"
+#include "ns3/ipv4.h"
+#include "ns3/node-container.h"
+#include "ns3/on-off-helper.h"
+#include "ns3/packet-sink-helper.h"
+#include "ns3/packet-sink.h"
+#include "ns3/point-to-point-helper.h"
+#include "ns3/point-to-point-net-device.h"
+#include "ns3/pointer.h"
+#include "ns3/uinteger.h"
 #include "ns3/ais-maritime-trace.h"
 #include "ns3/ais-mobility-model.h"
 #include "ns3/hst-mobility-model.h"
 #include "ns3/hst-trace.h"
 #include "ns3/opensky-adsb-trace.h"
 #include "ns3/opensky-mobility-model.h"
+#include "ns3/sagin-a2g-propagation-loss-model.h"
 #include "ns3/sagin-slice-router.h"
 #include "ns3/simulator.h"
 #include "ns3/test.h"
@@ -110,29 +127,45 @@ class A2gPathLossSpotCheckTest : public TestCase
 
     void DoRun() override
     {
-        // Spot check: RMa-AV LOS, h_UT = 50 m, d3D = 1 km, fc = 2 GHz.
-        // Slope: max(23.9 - 1.8*log10(50), 20) = max(23.9 - 3.06, 20) ≈ 20.84
-        // PL_LOS = 28 + 20.84*log10(1000) + 20*log10(2)
-        //        = 28 + 62.52 + 6.02 = 96.54 dB
+        // All expected values recomputed FROM TR 36.777 Table B-1.2, NOT from
+        // the model's own constants. Tolerance is tight (0.05 dB) so a wrong
+        // coefficient cannot slip through.
+
+        // RMa-AV LOS, h_UT = 50 m, d3D = 1 km, fc = 2 GHz.
+        //   slope = max(23.9 - 1.8*log10(50), 20) = max(20.842, 20) = 20.842
+        //   const = 20*log10(40*pi/3) = 32.44   (NOT 28 — the old 4.44 dB bug)
+        //   PL_LOS = 32.44 + 20.842*log10(1000) + 20*log10(2)
+        //          = 32.44 + 62.526 + 6.021 = 100.99 dB
         double pl = A2gChannelTr36777::PathLossDb(
             A2gScenario::RMa_AV, A2gLink::LOS, 1000.0, 2.0, 50.0);
-        NS_TEST_ASSERT_MSG_LT(std::abs(pl - 96.54), 2.0,
+        NS_TEST_ASSERT_MSG_LT(std::abs(pl - 100.99), 0.05,
                               "PL_LOS RMa-AV out of spec (got " << pl << ")");
 
         // UMa-AV LOS, h_UT = 100 m, d3D = 500 m, fc = 2 GHz.
-        // PL_LOS = 28 + 22*log10(500) + 20*log10(2) = 28 + 59.42 + 6.02 = 93.44 dB
+        //   PL_LOS = 28 + 22*log10(500) + 20*log10(2)
+        //          = 28 + 59.379 + 6.021 = 93.40 dB
         pl = A2gChannelTr36777::PathLossDb(
             A2gScenario::UMa_AV, A2gLink::LOS, 500.0, 2.0, 100.0);
-        NS_TEST_ASSERT_MSG_LT(std::abs(pl - 93.44), 2.0,
+        NS_TEST_ASSERT_MSG_LT(std::abs(pl - 93.40), 0.05,
                               "PL_LOS UMa-AV out of spec (got " << pl << ")");
 
         // UMi-AV LOS, h_UT = 50 m, d3D = 200 m, fc = 2 GHz.
-        // PL_LOS = 30.9 + 22.25*log10(200) + 20*log10(2)
-        //        = 30.9 + 51.20 + 6.02 = 88.12 dB
+        //   slope = 22.25 - 0.5*log10(50) = 22.25 - 0.849 = 21.401 (height term!)
+        //   PL_LOS = 30.9 + 21.401*log10(200) + 20*log10(2)
+        //          = 30.9 + 49.245 + 6.021 = 86.17 dB
         pl = A2gChannelTr36777::PathLossDb(
             A2gScenario::UMi_AV, A2gLink::LOS, 200.0, 2.0, 50.0);
-        NS_TEST_ASSERT_MSG_LT(std::abs(pl - 88.12), 2.0,
+        NS_TEST_ASSERT_MSG_LT(std::abs(pl - 86.17), 0.05,
                               "PL_LOS UMi-AV out of spec (got " << pl << ")");
+
+        // UMa-AV NLOS, h_UT = 50 m, d3D = 200 m, fc = 2 GHz.
+        //   const = -17.5 + 32.44 = 14.94; slope = 46 - 7*log10(50) = 34.109
+        //   raw = 14.94 + 34.109*log10(200) + 6.021 = 14.94 + 78.49 + 6.02 = 99.45 dB
+        //   LOS ref = 28 + 22*log10(200) + 6.021 = 84.65 dB → NLOS = max = 99.45 dB
+        pl = A2gChannelTr36777::PathLossDb(
+            A2gScenario::UMa_AV, A2gLink::NLOS, 200.0, 2.0, 50.0);
+        NS_TEST_ASSERT_MSG_LT(std::abs(pl - 99.45), 0.1,
+                              "PL_NLOS UMa-AV out of spec (got " << pl << ")");
 
         // NLOS PL must be greater than LOS PL at same geometry.
         double plLos = A2gChannelTr36777::PathLossDb(
@@ -141,6 +174,18 @@ class A2gPathLossSpotCheckTest : public TestCase
             A2gScenario::UMa_AV, A2gLink::NLOS, 200.0, 2.0, 50.0);
         NS_TEST_ASSERT_MSG_GT(plNlos, plLos,
                               "NLOS PL must exceed LOS PL");
+
+        // Below the AV threshold the model must switch to the TR 38.901 GROUND
+        // formulas, NOT clamp height into the AV coefficients. At h=10 m
+        // (< 22.5 m UMa threshold) the ground LOS/NLOS differ structurally from
+        // the AV value; assert the ground NLOS exceeds the AV-at-30m value it
+        // used to (wrongly) reuse, i.e. the two branches are genuinely distinct.
+        double ground = A2gChannelTr36777::PathLossDb(
+            A2gScenario::UMa_AV, A2gLink::NLOS, 500.0, 2.0, 10.0);
+        double aerial = A2gChannelTr36777::PathLossDb(
+            A2gScenario::UMa_AV, A2gLink::NLOS, 500.0, 2.0, 30.0);
+        NS_TEST_ASSERT_MSG_GT(std::abs(ground - aerial), 1.0,
+                              "ground (h=10) and AV (h=30) branches must differ");
     }
 };
 
@@ -148,22 +193,69 @@ class A2gLosProbabilityMonotonicTest : public TestCase
 {
   public:
     A2gLosProbabilityMonotonicTest()
-        : TestCase("LOS probability rises with UAV altitude")
+        : TestCase("LOS probability matches TR 36.777 Table B-1.1 spot values")
     {
     }
 
     void DoRun() override
     {
-        // At a fixed d2D, LOS prob must rise (or stay) with altitude.
+        using A2 = A2gChannelTr36777;
+
+        // ---- Headline spec check (audit G1): UMa-AV h=50 m, d2D=200 m -------
+        // d1 = max(460*log10(50) - 700, 18) = max(81.53, 18) = 81.53
+        // p1 = 4300*log10(50) - 3800 = 3505.6
+        // P  = 81.53/200 + exp(-200/3505.6)*(1 - 81.53/200) = 0.9672
+        double p = A2::LosProbability(A2gScenario::UMa_AV, 200.0, 50.0);
+        NS_TEST_ASSERT_MSG_EQ_TOL(p, 0.9672, 0.002,
+                                  "UMa-AV h=50,d=200 must be 0.967 (got " << p << ")");
+
+        // ---- UMi-AV must keep the sigmoid to 300 m (audit: NOT saturate to 1)
+        // h=300 m, d2D=1 km: d1 = max(294.05*log10(300)-432.94,18)=295.5,
+        // p1 = 233.98*log10(300)-0.95 = 578.6, P = 0.4206
+        p = A2::LosProbability(A2gScenario::UMi_AV, 1000.0, 300.0);
+        NS_TEST_ASSERT_MSG_EQ_TOL(p, 0.4206, 0.003,
+                                  "UMi-AV h=300,d=1km must be ~0.42 (got " << p << ")");
+        // The OLD code saturated UMi to 1.0 at h>=100 m — assert it does not.
+        p = A2::LosProbability(A2gScenario::UMi_AV, 1000.0, 100.0);
+        NS_TEST_ASSERT_MSG_LT(p, 0.5,
+                              "UMi-AV h=100,d=1km must stay a sigmoid, not 1.0");
+
+        // ---- Band-edge d1 point checks (audit: h = 22.5+, 40, 100, 300 m) --
+        // UMa h=100: d1=max(460*2-700,18)=220. So P=1 at d2D<=220, <1 beyond.
+        NS_TEST_ASSERT_MSG_EQ_TOL(
+            A2::LosProbability(A2gScenario::UMa_AV, 200.0, 100.0), 1.0, 1e-9,
+            "UMa d1(100 m)=220 → P=1 at d2D=200");
+        NS_TEST_ASSERT_MSG_LT(
+            A2::LosProbability(A2gScenario::UMa_AV, 250.0, 100.0), 1.0,
+            "UMa d1(100 m)=220 → P<1 at d2D=250");
+        // UMa just above 22.5 m: d1 floors at 18.
+        NS_TEST_ASSERT_MSG_EQ_TOL(
+            A2::LosProbability(A2gScenario::UMa_AV, 18.0, 22.6), 1.0, 1e-9,
+            "UMa d1 floors at 18 m near 22.5 m");
+        // UMa above 100 m → fully LOS.
+        NS_TEST_ASSERT_MSG_EQ_TOL(
+            A2::LosProbability(A2gScenario::UMa_AV, 5000.0, 150.0), 1.0, 1e-9,
+            "UMa h>100 m → P=1");
+        // RMa h=40: d1=max(1350.8*log10(40)-1602,18)=561.8.
+        NS_TEST_ASSERT_MSG_EQ_TOL(
+            A2::LosProbability(A2gScenario::RMa_AV, 500.0, 40.0), 1.0, 1e-9,
+            "RMa d1(40 m)=562 → P=1 at d2D=500");
+        NS_TEST_ASSERT_MSG_LT(
+            A2::LosProbability(A2gScenario::RMa_AV, 600.0, 40.0), 1.0,
+            "RMa d1(40 m)=562 → P<1 at d2D=600");
+        // RMa above 40 m → fully LOS.
+        NS_TEST_ASSERT_MSG_EQ_TOL(
+            A2::LosProbability(A2gScenario::RMa_AV, 5000.0, 60.0), 1.0, 1e-9,
+            "RMa h>40 m → P=1");
+
+        // ---- Monotonic in altitude at fixed d2D (sanity) -------------------
         double prev = -1.0;
         for (double h : {1.5, 10.0, 25.0, 50.0, 100.0, 200.0})
         {
-            double p = A2gChannelTr36777::LosProbability(
-                A2gScenario::UMa_AV, /*d2dM=*/200.0, h);
-            NS_TEST_ASSERT_MSG_GT_OR_EQ(p, prev,
-                                        "LOS prob non-monotonic in altitude");
-            NS_TEST_ASSERT_MSG_LT_OR_EQ(p, 1.0001, "LOS prob > 1");
-            prev = p;
+            double q = A2::LosProbability(A2gScenario::UMa_AV, 200.0, h);
+            NS_TEST_ASSERT_MSG_GT_OR_EQ(q, prev, "LOS prob non-monotonic");
+            NS_TEST_ASSERT_MSG_LT_OR_EQ(q, 1.0001, "LOS prob > 1");
+            prev = q;
         }
     }
 };
@@ -1689,6 +1781,343 @@ class HapsTrajectoryMobilitySimulatorTest : public TestCase
     }
 };
 
+// ---------------------------------------------------------------------------
+// Audit G1: SaginA2gPropagationLossModel must draw LOS + shadow fading per
+// node-pair (wired through DoAssignStreams) and CACHE the realisation — a link
+// must not get fresh white noise on every DoCalcRxPower call.
+// ---------------------------------------------------------------------------
+class A2gStochasticFadingTest : public TestCase
+{
+  public:
+    A2gStochasticFadingTest()
+        : TestCase("A2G prop model: cached per-pair stochastic LOS + shadow fading")
+    {
+    }
+
+    void DoRun() override
+    {
+        Ptr<SaginA2gPropagationLossModel> loss =
+            CreateObject<SaginA2gPropagationLossModel>();
+        loss->SetScenario(A2gScenario::UMa_AV);
+        loss->SetFrequencyGHz(2.0);
+
+        // DoAssignStreams must consume exactly 2 streams (LOS + shadowing) —
+        // proof the randomness is real and stream-controlled (was 0 before).
+        const int64_t used = loss->AssignStreams(100);
+        NS_TEST_ASSERT_MSG_EQ(used, 2, "must consume 2 RNG streams");
+
+        Ptr<ConstantPositionMobilityModel> gnb =
+            CreateObject<ConstantPositionMobilityModel>();
+        gnb->SetPosition(Vector{0, 0, 25.0});
+        Ptr<ConstantPositionMobilityModel> uav =
+            CreateObject<ConstantPositionMobilityModel>();
+        uav->SetPosition(Vector{300.0, 0, 80.0});
+
+        // (1) Caching: repeated calls on the SAME stationary pair must return
+        //     an IDENTICAL value — no per-call white noise (audit gap S6).
+        const double first = loss->CalcRxPower(30.0, gnb, uav);
+        for (int i = 0; i < 20; ++i)
+        {
+            double rep = loss->CalcRxPower(30.0, gnb, uav);
+            NS_TEST_ASSERT_MSG_EQ_TOL(rep, first, 1e-9,
+                                      "stationary pair must be cached, not re-drawn");
+        }
+
+        // The model caches by node-pair identity, so every pair below must be a
+        // distinct, still-alive object — hold them in vectors so addresses are
+        // not recycled (which would collide the pointer-keyed cache).
+        const int N = 400;
+        // A2gChannelTr36777 deterministic LOS/NLOS references at the geometry
+        // used below (gNB 25 m, UAV at (2000,0,60), d2D=2 km).
+        const double d3d = std::sqrt(2000.0 * 2000.0 + 35.0 * 35.0);
+        const double losDet =
+            A2gChannelTr36777::PathLossDb(A2gScenario::UMa_AV, A2gLink::LOS, d3d, 2.0, 60.0);
+        const double nlosDet =
+            A2gChannelTr36777::PathLossDb(A2gScenario::UMa_AV, A2gLink::NLOS, d3d, 2.0, 60.0);
+        NS_TEST_ASSERT_MSG_GT(nlosDet - losDet, 10.0, "LOS/NLOS must be separable");
+        // Free-space reference exactly as the model computes it, and the two
+        // discrete rx values the fading-OFF model must land on.
+        const double fspl = 20.0 * std::log10(d3d) + 20.0 * std::log10(2e9) - 147.55;
+        const double rxLosExpect = 30.0 - std::max(0.0, losDet - fspl);
+        const double rxNlosExpect = 30.0 - std::max(0.0, nlosDet - fspl);
+
+        // (2) Stochastic LOS mix (shadow fading OFF): with fading disabled the
+        //     received power collapses onto EXACTLY the two deterministic values
+        //     (LOS-excess or NLOS-excess). Both classes must appear — proving a
+        //     genuine per-pair Bernoulli draw, not a static per-run attribute.
+        Ptr<SaginA2gPropagationLossModel> losMix =
+            CreateObject<SaginA2gPropagationLossModel>();
+        losMix->SetScenario(A2gScenario::UMa_AV);
+        losMix->SetFrequencyGHz(2.0);
+        losMix->SetAttribute("ApplyShadowFading", BooleanValue(false));
+        losMix->AssignStreams(200);
+
+        std::vector<Ptr<ConstantPositionMobilityModel>> gs, us;
+        gs.reserve(N);
+        us.reserve(N);
+        int nLos = 0;
+        int nNlos = 0;
+        for (int i = 0; i < N; ++i)
+        {
+            Ptr<ConstantPositionMobilityModel> g =
+                CreateObject<ConstantPositionMobilityModel>();
+            g->SetPosition(Vector{0, 0, 25.0});
+            Ptr<ConstantPositionMobilityModel> u =
+                CreateObject<ConstantPositionMobilityModel>();
+            u->SetPosition(Vector{2000.0, 0, 60.0});
+            gs.push_back(g);
+            us.push_back(u);
+            // With fading off, rx collapses onto exactly rxLosExpect or
+            // rxNlosExpect. Classify by nearest.
+            double rx = losMix->CalcRxPower(30.0, g, u);
+            if (std::abs(rx - rxLosExpect) < std::abs(rx - rxNlosExpect))
+            {
+                NS_TEST_ASSERT_MSG_EQ_TOL(rx, rxLosExpect, 1e-6, "LOS rx exact");
+                ++nLos;
+            }
+            else
+            {
+                NS_TEST_ASSERT_MSG_EQ_TOL(rx, rxNlosExpect, 1e-6, "NLOS rx exact");
+                ++nNlos;
+            }
+        }
+        NS_TEST_ASSERT_MSG_GT(nLos, 0, "some pairs must draw LOS");
+        NS_TEST_ASSERT_MSG_GT(nNlos, 0, "some pairs must draw NLOS");
+
+        // (3) Shadow fading spread (link FORCED NLOS, fading ON): rx must vary
+        //     across distinct pairs purely from the Table B-1.2 shadowing draw.
+        Ptr<SaginA2gPropagationLossModel> fadeOnly =
+            CreateObject<SaginA2gPropagationLossModel>();
+        fadeOnly->SetScenario(A2gScenario::UMa_AV);
+        fadeOnly->SetFrequencyGHz(2.0);
+        fadeOnly->SetLink(A2gLink::NLOS); // forces DrawStochasticLos = false
+        fadeOnly->AssignStreams(400);
+
+        std::vector<Ptr<ConstantPositionMobilityModel>> gs2, us2;
+        double minRx = 1e9;
+        double maxRx = -1e9;
+        for (int i = 0; i < N; ++i)
+        {
+            Ptr<ConstantPositionMobilityModel> g =
+                CreateObject<ConstantPositionMobilityModel>();
+            g->SetPosition(Vector{0, 0, 25.0});
+            Ptr<ConstantPositionMobilityModel> u =
+                CreateObject<ConstantPositionMobilityModel>();
+            u->SetPosition(Vector{2000.0, 0, 60.0});
+            gs2.push_back(g);
+            us2.push_back(u);
+            double rx = fadeOnly->CalcRxPower(30.0, g, u);
+            minRx = std::min(minRx, rx);
+            maxRx = std::max(maxRx, rx);
+        }
+        NS_TEST_ASSERT_MSG_GT(maxRx - minRx, 3.0,
+                              "shadow fading must spread Rx power across pairs");
+
+        Simulator::Destroy();
+    }
+};
+
+
+// ---------------------------------------------------------------------------
+// Audit gap G3: the router's chosen path must ACTUATE the data plane. Build a
+// real IPv4 forwarding topology with two parallel LEO relays:
+//
+//     SRC --- LEO-A --- GW --- SRV
+//         \-- LEO-B --/
+//
+// The MultiLayerRouter chooses one LEO (greedy max-elevation); we bring that
+// LEO's two interfaces UP and the other LEO's DOWN, then let global routing
+// forward a UDP flow SRC->SRV. Per-LEO bytes are counted at the GW (MacRx) so
+// we can assert the delivered bytes follow the ROUTER's choice: the LEO the
+// router selected carries the flow; the LEO it rejected carries ~0. Flipping
+// the geometry flips the choice and reroutes the data plane.
+// ---------------------------------------------------------------------------
+namespace
+{
+void
+AddRxBytes(uint64_t* counter, Ptr<const Packet> p)
+{
+    *counter += p->GetSize();
+}
+} // namespace
+
+class RouterGatesDataPlaneTest : public TestCase
+{
+  public:
+    RouterGatesDataPlaneTest()
+        : TestCase("G3: router's chosen path gates the data plane (off-route "
+                   "hop delivers ~0; flipping the choice reroutes)")
+    {
+    }
+
+    struct PhaseResult
+    {
+        double chosenLeoZ;   // altitude of the LEO the router picked
+        bool routerPickedA;  // did the router select LEO-A?
+        uint64_t carriedA;   // bytes GW received from LEO-A
+        uint64_t carriedB;   // bytes GW received from LEO-B
+        uint64_t deliveredSrv; // bytes the server received end-to-end
+    };
+
+    // Run one phase. `overheadIsA==true` places LEO-A directly overhead the
+    // source (max elevation) and LEO-B far/low; false swaps them. Returns what
+    // the router picked and what each path actually carried.
+    PhaseResult RunPhase(bool overheadIsA)
+    {
+        NodeContainer nodes;
+        nodes.Create(5); // 0=SRC 1=LEO-A 2=LEO-B 3=GW 4=SRV
+
+        // Mobility: the router scores LEO elevation from the SRC position.
+        auto src = CreateObject<ConstantPositionMobilityModel>();
+        src->SetPosition(Vector{0, 0, 0});
+        auto leoAMob = CreateObject<ConstantPositionMobilityModel>();
+        auto leoBMob = CreateObject<ConstantPositionMobilityModel>();
+        const Vector overhead{0, 0, 550000.0};      // ~90 deg elevation
+        const Vector faraway{2.0e6, 0, 550000.0};   // ~15 deg elevation
+        leoAMob->SetPosition(overheadIsA ? overhead : faraway);
+        leoBMob->SetPosition(overheadIsA ? faraway : overhead);
+
+        Ptr<MultiLayerRouter> router = CreateObject<MultiLayerRouter>();
+        router->AddNode(SaginLayer::Leo, leoAMob);
+        router->AddNode(SaginLayer::Leo, leoBMob);
+
+        InternetStackHelper internet;
+        internet.Install(nodes);
+
+        PointToPointHelper p2p;
+        p2p.SetDeviceAttribute("DataRate", DataRateValue(DataRate(uint64_t(50e6))));
+        p2p.SetChannelAttribute("Delay", TimeValue(MilliSeconds(2)));
+        Ipv4AddressHelper ipv4;
+
+        // Build one link, return device container + a per-side RateErrorModel
+        // on the receiving (index-1) device so we can gate it.
+        struct Link
+        {
+            NetDeviceContainer dev;
+            Ptr<RateErrorModel> emRx; // on dev.Get(1)
+            Ptr<Ipv4> ipA, ipB;
+            uint32_t ifA, ifB;
+        };
+        auto makeLink = [&](Ptr<Node> a, Ptr<Node> b, const char* subnet) -> Link {
+            Link l;
+            l.dev = p2p.Install(NodeContainer(a, b));
+            l.emRx = CreateObject<RateErrorModel>();
+            l.emRx->SetUnit(RateErrorModel::ERROR_UNIT_PACKET);
+            l.emRx->SetRate(0.0);
+            l.dev.Get(1)->SetAttribute("ReceiveErrorModel", PointerValue(l.emRx));
+            ipv4.SetBase(Ipv4Address(subnet), "255.255.255.0");
+            auto ifc = ipv4.Assign(l.dev);
+            l.ipA = a->GetObject<Ipv4>();
+            l.ipB = b->GetObject<Ipv4>();
+            l.ifA = ifc.Get(0).second;
+            l.ifB = ifc.Get(1).second;
+            return l;
+        };
+
+        Link srcA = makeLink(nodes.Get(0), nodes.Get(1), "10.40.1.0"); // SRC-LEOA
+        Link aGw = makeLink(nodes.Get(1), nodes.Get(3), "10.40.2.0");  // LEOA-GW
+        Link srcB = makeLink(nodes.Get(0), nodes.Get(2), "10.40.3.0"); // SRC-LEOB
+        Link bGw = makeLink(nodes.Get(2), nodes.Get(3), "10.40.4.0");  // LEOB-GW
+        Link gwSrv = makeLink(nodes.Get(3), nodes.Get(4), "10.40.9.0"); // GW-SRV
+        Ipv4Address srvAddr =
+            nodes.Get(4)->GetObject<Ipv4>()->GetAddress(gwSrv.ifB, 0).GetLocal();
+
+        // Count bytes the GW receives from each LEO (GW is side 1 of *-GW).
+        uint64_t carriedA = 0;
+        uint64_t carriedB = 0;
+        aGw.dev.Get(1)->TraceConnectWithoutContext(
+            "MacRx", MakeBoundCallback(&AddRxBytes, &carriedA));
+        bGw.dev.Get(1)->TraceConnectWithoutContext(
+            "MacRx", MakeBoundCallback(&AddRxBytes, &carriedB));
+
+        // ---- ACTUATE THE ROUTER DECISION ONTO THE DATA PLANE ----
+        auto path = router->Route(src);
+        Ptr<MobilityModel> chosen = path.back().node;
+        const bool aChosen = (chosen == leoAMob);
+        // Bring the chosen LEO's two links UP + usable; the other DOWN.
+        auto gate = [](Link& l, bool on) {
+            l.emRx->SetRate(on ? 0.0 : 1.0);
+            if (on)
+            {
+                l.ipA->SetUp(l.ifA);
+                l.ipB->SetUp(l.ifB);
+            }
+            else
+            {
+                l.ipA->SetDown(l.ifA);
+                l.ipB->SetDown(l.ifB);
+            }
+        };
+        gate(srcA, aChosen);
+        gate(aGw, aChosen);
+        gate(srcB, !aChosen);
+        gate(bGw, !aChosen);
+
+        Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+
+        // ---- traffic: SRC -> SRV (stable address, reached over chosen LEO) ---
+        const uint16_t port = 8000;
+        OnOffHelper onoff("ns3::UdpSocketFactory",
+                          InetSocketAddress(srvAddr, port));
+        onoff.SetConstantRate(DataRate(uint64_t(4e6)), 1000);
+        onoff.SetAttribute("StartTime", TimeValue(Seconds(1.0)));
+        onoff.SetAttribute("StopTime", TimeValue(Seconds(6.0)));
+        onoff.Install(nodes.Get(0));
+
+        PacketSinkHelper sink("ns3::UdpSocketFactory",
+                              InetSocketAddress(Ipv4Address::GetAny(), port));
+        ApplicationContainer sinkApp = sink.Install(nodes.Get(4));
+        sinkApp.Start(Seconds(0.0));
+        sinkApp.Stop(Seconds(6.5));
+
+        Simulator::Stop(Seconds(6.5));
+        Simulator::Run();
+
+        PhaseResult r;
+        r.chosenLeoZ = chosen->GetPosition().z;
+        r.routerPickedA = aChosen;
+        r.carriedA = carriedA;
+        r.carriedB = carriedB;
+        r.deliveredSrv =
+            DynamicCast<PacketSink>(sinkApp.Get(0))->GetTotalRx();
+        Simulator::Destroy();
+        return r;
+    }
+
+    void DoRun() override
+    {
+        // Phase A: LEO-A overhead -> router picks A -> data plane carries via A.
+        PhaseResult a = RunPhase(true);
+        NS_TEST_ASSERT_MSG_EQ(a.routerPickedA, true,
+                              "phase A: router selects overhead LEO-A");
+        NS_TEST_ASSERT_MSG_EQ_TOL(a.chosenLeoZ, 550000.0, 1.0,
+                                  "phase A: router picked a LEO");
+        NS_TEST_ASSERT_MSG_GT(a.deliveredSrv, 100000u,
+                              "phase A: flow delivered end-to-end over LEO-A");
+        NS_TEST_ASSERT_MSG_GT(a.carriedA, 100000u,
+                              "phase A: chosen LEO-A carries the flow");
+        NS_TEST_ASSERT_MSG_EQ(a.carriedB, 0u,
+                              "phase A: off-route LEO-B carries ~0 bytes");
+
+        // Phase B: LEO-B overhead -> router picks B -> data plane REROUTES to B.
+        PhaseResult b = RunPhase(false);
+        NS_TEST_ASSERT_MSG_EQ(b.routerPickedA, false,
+                              "phase B: router selects overhead LEO-B");
+        NS_TEST_ASSERT_MSG_GT(b.deliveredSrv, 100000u,
+                              "phase B: flow delivered end-to-end over LEO-B");
+        NS_TEST_ASSERT_MSG_GT(b.carriedB, 100000u,
+                              "phase B: chosen LEO-B carries the flow");
+        NS_TEST_ASSERT_MSG_EQ(b.carriedA, 0u,
+                              "phase B: off-route LEO-A carries ~0 bytes");
+
+        // The carried traffic FOLLOWED the router decision, not a fixed chain:
+        // A-bytes dominate in phase A, B-bytes dominate in phase B.
+        NS_TEST_ASSERT_MSG_GT(a.carriedA, b.carriedA,
+                              "LEO-A only carries when the router selects it");
+        NS_TEST_ASSERT_MSG_GT(b.carriedB, a.carriedB,
+                              "LEO-B only carries when the router selects it");
+    }
+};
 
 class NtnSaginTestSuite : public TestSuite
 {
@@ -1700,7 +2129,9 @@ class NtnSaginTestSuite : public TestSuite
         AddTestCase(new UavPatrolReturnsToStartTest, TestCase::Duration::QUICK);
         AddTestCase(new A2gPathLossSpotCheckTest, TestCase::Duration::QUICK);
         AddTestCase(new A2gLosProbabilityMonotonicTest, TestCase::Duration::QUICK);
+        AddTestCase(new A2gStochasticFadingTest, TestCase::Duration::QUICK);
         AddTestCase(new MultiLayerRouterConvergesTest, TestCase::Duration::QUICK);
+        AddTestCase(new RouterGatesDataPlaneTest, TestCase::Duration::QUICK);
         AddTestCase(new AeronauticalReachesArrivalTest, TestCase::Duration::QUICK);
         // Roadmap §4.4.1 — OpenSky ADS-B trace importer + replay mobility.
         AddTestCase(new OpenSkyImporterParseTest, TestCase::Duration::QUICK);
