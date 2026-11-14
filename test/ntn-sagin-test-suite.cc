@@ -531,7 +531,7 @@ class OpenSkyImporterParseTest : public TestCase
         sagin::OpenSkyAdsbImporter imp;
         const std::string candidates[] = {
             "contrib/ntn-sagin/data/opensky-sample-trace.csv",
-            "/home/uzair/6g_ntn_ns3/ns-3-dev/contrib/ntn-sagin/data/"
+            "../../contrib/ntn-sagin/data/"
             "opensky-sample-trace.csv",
         };
         std::map<std::string, sagin::OpenSkyAdsbTrace> traces;
@@ -693,7 +693,7 @@ class OpenSkySimulatorTimeReplayTest : public TestCase
         sagin::OpenSkyAdsbImporter imp;
         const std::string candidates[] = {
             "contrib/ntn-sagin/data/opensky-sample-trace.csv",
-            "/home/uzair/6g_ntn_ns3/ns-3-dev/contrib/ntn-sagin/data/"
+            "../../contrib/ntn-sagin/data/"
             "opensky-sample-trace.csv",
         };
         std::map<std::string, sagin::OpenSkyAdsbTrace> traces;
@@ -777,7 +777,7 @@ class AisImporterParseTest : public TestCase
         sagin::AisDanishImporter imp;
         const std::string candidates[] = {
             "contrib/ntn-sagin/data/ais-sample-trace.csv",
-            "/home/uzair/6g_ntn_ns3/ns-3-dev/contrib/ntn-sagin/data/"
+            "../../contrib/ntn-sagin/data/"
             "ais-sample-trace.csv",
         };
         std::map<uint32_t, sagin::AisMaritimeTrace> traces;
@@ -924,7 +924,7 @@ class AisSimulatorTimeReplayTest : public TestCase
         sagin::AisDanishImporter imp;
         const std::string candidates[] = {
             "contrib/ntn-sagin/data/ais-sample-trace.csv",
-            "/home/uzair/6g_ntn_ns3/ns-3-dev/contrib/ntn-sagin/data/"
+            "../../contrib/ntn-sagin/data/"
             "ais-sample-trace.csv",
         };
         std::map<uint32_t, sagin::AisMaritimeTrace> traces;
