@@ -1,0 +1,26 @@
+orbcomm: device 25/150 2 s
+orbcomm: device 50/150 3 s
+orbcomm: device 75/150 4 s
+orbcomm: device 100/150 6 s
+orbcomm: device 125/150 7 s
+orbcomm: device 150/150 8 s
+orbcomm: done 9 s
+/home/uzair/6g_ntn_ns3/papers/paper6_iotj_sf_iot/sim/sf_analysis.py:156: RuntimeWarning: Mean of empty slice
+  sim=float(np.nanmean(ms)), sim_fe=float(np.nanmean(d["d_SFE"][sel])), sim_bp=float(np.nanmean(d["d_BP"][sel])),
+orbcomm_k5_w0 cf   : fleet-mean error +39.3 %, median |err| 49.2 %, p90 |err| 62.3 %
+orbcomm_k5_w0 half : fleet-mean error -31.5 %, median |err| 24.5 %, p90 |err| 37.8 %
+orbcomm_k5_w0 semi : fleet-mean error -3.9 %, median |err| 3.4 %, p90 |err| 18.0 %
+orbcomm_k5_w0 {'pred_mean': 3968.790156238706, 'pred_p95': 8072.933911270383, 'pred_p99': 20902.733715301052, 'sim_mean': 4138.859343068575, 'sim_p95': 7561.140865438915, 'sim_p99': 22727.096243075906} {'bound_p99': 92.48000000000002, 'sim_new_p99': 83.37999999999988, 'sim_fcfs_p99': 221.37999999999988}
+orbcomm: device 25/150 2 s
+orbcomm: device 50/150 3 s
+orbcomm: device 75/150 4 s
+orbcomm: device 100/150 6 s
+orbcomm: device 125/150 7 s
+orbcomm: device 150/150 9 s
+orbcomm: done 9 s
+/home/uzair/6g_ntn_ns3/papers/paper6_iotj_sf_iot/sim/sf_analysis.py:158: RuntimeWarning: Mean of empty slice
+  sim=float(np.nanmean(ms)), sim_fe=float(np.nanmean(d["d_SFE"][sel])), sim_bp=float(np.nanmean(d["d_BP"][sel])),
+orbcomm_k5_w0 cf   : fleet-mean error +39.3 %, median |err| 49.2 %, p90 |err| 62.3 %
+orbcomm_k5_w0 half : fleet-mean error -31.5 %, median |err| 24.5 %, p90 |err| 37.8 %
+orbcomm_k5_w0 semi : fleet-mean error -3.9 %, median |err| 3.4 %, p90 |err| 18.0 %
+orbcomm_k5_w0 {'pred_mean': 3968.790156238706, 'pred_p95': 8072.933911270383, 'pred_p99': 20902.733715301052, 'sim_mean': 4138.859343068575, 'sim_p95': 7561.140865438915, 'sim_p99': 22727.096243075906} {'bound_p99': 95.39999999999998, 'pergap_violations': 0, 'pergap_n': 759, 'sim_new_p99': 87.83999999999992, 'sim_fcfs_p99': 274.67999999999984}

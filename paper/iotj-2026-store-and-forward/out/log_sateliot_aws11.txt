@@ -1,0 +1,7 @@
+sateliot: device 25/150 3 s
+sateliot: device 50/150 5 s
+sateliot: device 75/150 8 s
+sateliot: device 100/150 11 s
+sateliot: device 125/150 12 s
+sateliot: device 150/150 15 s
+sateliot: done 16 s

@@ -1,0 +1,7 @@
+kineis: device 25/150 11 s
+kineis: device 50/150 19 s
+kineis: device 75/150 30 s
+kineis: device 100/150 37 s
+kineis: device 125/150 46 s
+kineis: device 150/150 50 s
+kineis: done 52 s

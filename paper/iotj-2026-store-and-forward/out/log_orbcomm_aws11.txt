@@ -1,0 +1,7 @@
+orbcomm: device 25/150 10 s
+orbcomm: device 50/150 18 s
+orbcomm: device 75/150 27 s
+orbcomm: device 100/150 31 s
+orbcomm: device 125/150 36 s
+orbcomm: device 150/150 43 s
+orbcomm: done 46 s

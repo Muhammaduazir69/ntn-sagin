@@ -1,0 +1,26 @@
+kineis: device 25/150 2 s
+kineis: device 50/150 4 s
+kineis: device 75/150 6 s
+kineis: device 100/150 7 s
+kineis: device 125/150 9 s
+kineis: device 150/150 10 s
+kineis: done 11 s
+/home/uzair/6g_ntn_ns3/papers/paper6_iotj_sf_iot/sim/sf_analysis.py:156: RuntimeWarning: Mean of empty slice
+  sim=float(np.nanmean(ms)), sim_fe=float(np.nanmean(d["d_SFE"][sel])), sim_bp=float(np.nanmean(d["d_BP"][sel])),
+kineis_aws11_w0 cf   : fleet-mean error +23.5 %, median |err| 26.6 %, p90 |err| 56.2 %
+kineis_aws11_w0 half : fleet-mean error -40.3 %, median |err| 42.8 %, p90 |err| 53.2 %
+kineis_aws11_w0 semi : fleet-mean error +6.4 %, median |err| 11.6 %, p90 |err| 35.2 %
+kineis_aws11_w0 {'pred_mean': 1418.7186851468582, 'pred_p95': 5080.724035617185, 'pred_p99': 7578.656121913131, 'sim_mean': 1334.0980666353662, 'sim_p95': 4871.438927527613, 'sim_p99': 7601.151403207355} {'bound_p99': 25.0, 'sim_new_p99': 20.0, 'sim_fcfs_p99': 41.32999999999993}
+kineis: device 25/150 2 s
+kineis: device 50/150 4 s
+kineis: device 75/150 6 s
+kineis: device 100/150 8 s
+kineis: device 125/150 11 s
+kineis: device 150/150 12 s
+kineis: done 13 s
+/home/uzair/6g_ntn_ns3/papers/paper6_iotj_sf_iot/sim/sf_analysis.py:158: RuntimeWarning: Mean of empty slice
+  sim=float(np.nanmean(ms)), sim_fe=float(np.nanmean(d["d_SFE"][sel])), sim_bp=float(np.nanmean(d["d_BP"][sel])),
+kineis_aws11_w0 cf   : fleet-mean error +23.5 %, median |err| 26.6 %, p90 |err| 56.2 %
+kineis_aws11_w0 half : fleet-mean error -40.3 %, median |err| 42.8 %, p90 |err| 53.2 %
+kineis_aws11_w0 semi : fleet-mean error +6.4 %, median |err| 11.6 %, p90 |err| 35.2 %
+kineis_aws11_w0 {'pred_mean': 1418.7186851468582, 'pred_p95': 5080.724035617185, 'pred_p99': 7578.656121913131, 'sim_mean': 1334.0980666353662, 'sim_p95': 4871.438927527613, 'sim_p99': 7601.151403207355} {'bound_p99': 25.0, 'pergap_violations': 0, 'pergap_n': 3051, 'sim_new_p99': 22.5, 'sim_fcfs_p99': 46.0}

@@ -1,0 +1,335 @@
+--- a/contrib/ntn-sagin/examples/sagin-store-forward-iot.cc
++++ b/contrib/ntn-sagin/examples/sagin-store-forward-iot.cc
+@@ -27,9 +27,12 @@
+ #include "ns3/sagin-custody-queue.h"
+ #include "ns3/sgp4-mobility-model.h"
+ 
++#include <algorithm>
+ #include <cmath>
+ #include <fstream>
+ #include <map>
++#include <numeric>
++#include <random>
+ #include <sstream>
+ 
+ using namespace ns3;
+@@ -117,6 +120,17 @@
+ std::vector<uint32_t> g_satUsed;
+ std::vector<bool> g_devWasUp;
+ std::vector<bool> g_satWasUp;
++// Nov 2026 revision: storage log, shared uplink, Monitoring List, per-device end-to-end lifetime
++std::ofstream g_occ;
++double g_upBps = 0.0;                        // uplink rate a satellite shares among devices, 0 = unlimited
++std::vector<double> g_upCredit;              // packets a satellite can still hear in this tick
++bool g_upRoundRobin = true;                  // true: one report per device per pass; false: exhaustive backlog
++std::vector<uint32_t> g_rrNext;              // [sat]: device index the satellite's next pass starts from
++int64_t g_rrGrant = -1;                      // device holding the one-report grant of round robin, -1 = none
++std::vector<std::vector<bool>> g_allowed;    // [device][sat]: satellite on the device's Monitoring List
++std::vector<double> g_lifeOffsetS;           // [device]: shifts the origin so that per-device lifetimes apply
++uint64_t g_tickCount = 0;
++constexpr uint32_t kPktBytes = 52;           // 40 B payload + SeqTs header
+ uint64_t g_generated = 0;
+ double g_sinDevMask, g_sinGwMask;
+ double g_tick = 10.0;
+@@ -130,6 +144,10 @@
+ void
+ SetLink(Link& l, bool up, double rangeM)
+ {
++    if (!up && !l.up)
++    {
++        return; // still out of view: nothing is sent on this link, so its delay does not matter
++    }
+     l.up = up;
+     const double rate = up ? 0.0 : 1.0;
+     l.emA->SetRate(rate);
+@@ -191,7 +209,7 @@
+     double bestE = -2.0;
+     for (uint32_t k = 0; k < S; ++k)
+     {
+-        if (g_sinDs[d][k] < g_sinDevMask)
++        if (g_sinDs[d][k] < g_sinDevMask || (!g_allowed.empty() && !g_allowed[d][k]))
+         {
+             continue;
+         }
+@@ -224,6 +242,22 @@
+     {
+         return false;
+     }
++    if (g_upBps > 0.0)
++    {
++        if (g_upRoundRobin)
++        {
++            if (g_rrGrant != static_cast<int64_t>(d))
++            {
++                return false; // round robin: a report leaves only under the scheduler's grant
++            }
++            g_rrGrant = -1; // one report, so the drain stops at the next refusal
++        }
++        if (g_upCredit[k] < 1.0)
++        {
++            return false; // the satellite's shared uplink is used up in this tick
++        }
++        g_upCredit[k] -= 1.0;
++    }
+     const bool ok = g_devSock[d]->SendTo(p->Copy(), 0, InetSocketAddress(g_ds[d][k].addrB, kPort)) >= 0;
+     g_devUsed[d] += ok ? 1 : 0;
+     return ok;
+@@ -287,6 +321,12 @@
+ {
+     SeqTsHeader h;
+     p->PeekHeader(h);
++    if (!g_lifeOffsetS.empty())
++    {
++        // The queue has one lifetime L; a device with lifetime L_d gets origin gen - (L - L_d), so that
++        // now - origin > L exactly when now - gen > L_d.
++        return h.GetTs() - Seconds(g_lifeOffsetS[h.GetSeq() >> 20]);
++    }
+     return h.GetTs();
+ }
+ 
+@@ -313,6 +353,57 @@
+     }
+ }
+ 
++/// Per-report round robin of the shared uplink, one pass after another, one order per satellite. Every device with
++/// a backlog listens to the satellite the policy picks for it; each satellite grants one report per device in
++/// increasing device index, starting after the device it served last, until its credit runs out. The pointer
++/// survives between ticks and passes, so no index is favored. Queues stay down outside a grant, so an update
++/// generated between two ticks waits for the next one (at most one tick).
++void
++ServeUplinkRoundRobin()
++{
++    const uint32_t S = g_sats.size();
++    std::vector<std::vector<uint32_t>> heard(S);
++    for (uint32_t d = 0; d < g_dev.size(); ++d) // increasing d, so each list is sorted
++    {
++        if (g_devQ[d]->GetInCustody() == 0 || (g_upBudget > 0 && g_devUsed[d] >= g_upBudget))
++        {
++            continue;
++        }
++        const int k = ChooseSatellite(d);
++        if (k >= 0)
++        {
++            heard[k].push_back(d);
++        }
++    }
++    for (uint32_t k = 0; k < S; ++k)
++    {
++        const auto& ds = heard[k];
++        if (ds.empty())
++        {
++            continue;
++        }
++        std::size_t pos = std::lower_bound(ds.begin(), ds.end(), g_rrNext[k]) - ds.begin();
++        std::size_t idle = 0; // consecutive devices that had nothing to send
++        while (g_upCredit[k] >= 1.0 && idle < ds.size())
++        {
++            const uint32_t d = ds[pos % ds.size()];
++            ++pos;
++            if (g_devQ[d]->GetInCustody() == 0)
++            {
++                ++idle;
++                continue;
++            }
++            g_rrGrant = d;
++            const uint64_t before = g_devQ[d]->GetInCustody();
++            g_devQ[d]->SetContactUp(true); // drains one report; the next forward is refused
++            g_devQ[d]->SetContactUp(false);
++            g_rrGrant = -1;
++            g_rrNext[k] = d + 1;
++            idle = g_devQ[d]->GetInCustody() < before ? 0 : idle + 1; // a refusal must not spin here
++        }
++    }
++}
++
+ void
+ Tick()
+ {
+@@ -335,12 +426,26 @@
+         if (any && !g_satWasUp[k])
+         {
+             g_satUsed[k] = 0; // a new gateway contact starts with a fresh budget
++            if (g_occ.is_open())
++            {
++                // storage just before the contact, eq. (occ) of the manuscript
++                g_occ << Simulator::Now().GetSeconds() << "," << k << "," << g_satQ[k]->GetInCustody() << "\n";
++            }
++        }
++        if (g_upBps > 0.0)
++        {
++            // a new tick's share of the rate; only the fraction of a packet carries over, so the long-run
++            // ceiling is exactly upBps and an idle tick does not bank capacity
++            g_upCredit[k] = (g_upCredit[k] - std::floor(g_upCredit[k])) + g_upBps * g_tick / (8.0 * kPktBytes);
+         }
+         g_satWasUp[k] = any;
+         g_satQ[k]->SetContactUp(any);
+     }
+-    for (uint32_t d = 0; d < g_dev.size(); ++d)
++    const uint32_t nDevices = g_dev.size();
++    for (uint32_t i = 0; i < nDevices; ++i)
+     {
++        // rotate the service order so that no device always gets the shared uplink first
++        const uint32_t d = static_cast<uint32_t>((i + g_tickCount) % nDevices);
+         bool any = false;
+         for (uint32_t k = 0; k < S; ++k)
+         {
+@@ -357,8 +462,16 @@
+         g_devWasUp[d] = any;
+         // re-offer the backlog: the device's contact is up whenever some satellite is usable
+         g_devQ[d]->SetContactUp(false);
+-        g_devQ[d]->SetContactUp(any && ChooseSatellite(d) >= 0);
++        if (g_upBps <= 0.0 || !g_upRoundRobin)
++        {
++            g_devQ[d]->SetContactUp(any && ChooseSatellite(d) >= 0);
++        }
+     }
++    if (g_upBps > 0.0 && g_upRoundRobin)
++    {
++        ServeUplinkRoundRobin(); // after the loop, so every device's elevations are those of this tick
++    }
++    ++g_tickCount;
+     Simulator::Schedule(Seconds(g_tick), &Tick);
+ }
+ 
+@@ -434,7 +547,25 @@
+     cmd.AddValue("upBudget", "updates a device may upload per contact with the fleet, 0 = unlimited", g_upBudget);
+     cmd.AddValue("feedBudget", "updates a satellite may deliver per gateway contact, 0 = unlimited", g_feedBudget);
+     cmd.AddValue("out", "output CSV", out);
++    bool devKeepNewest = false;
++    bool satKeepNewest = false;
++    std::string occLog;
++    std::string lifetimeCsv;
++    uint32_t monitorList = 0;
++    uint32_t monitorSeed = 1;
++    cmd.AddValue("devKeepNewest", "keep only the newest update on the devices (one-factor ablation)", devKeepNewest);
++    cmd.AddValue("satKeepNewest", "keep only the newest update on the satellites (one-factor ablation)", satKeepNewest);
++    cmd.AddValue("occLog", "log custody occupancy at the start of each gateway contact to this CSV", occLog);
++    cmd.AddValue("upBps", "uplink rate a satellite shares among devices (b/s), 0 = unlimited", g_upBps);
++    cmd.AddValue("upRoundRobin", "share upBps one report per device per pass (1) or by whole backlogs in a rotating order (0, the rule of the first campaign)", g_upRoundRobin);
++    cmd.AddValue("monitorList", "satellites on each device's Monitoring List, 0 = all", monitorList);
++    cmd.AddValue("monitorSeed", "seed of the Monitoring List draw", monitorSeed);
++    cmd.AddValue("lifetimeCsv", "per-device end-to-end lifetime in hours, one line per device (implies lifetimeE2E)", lifetimeCsv);
++    uint32_t macQueue = 1000000;
++    cmd.AddValue("macQueue", "packets a link's transmit queue holds (ns-3 default 100)", macQueue);
+     cmd.Parse(argc, argv);
++    devKeepNewest = devKeepNewest || keepNewest;
++    satKeepNewest = satKeepNewest || keepNewest;
+     g_sinDevMask = std::sin(devMaskDeg * M_PI / 180.0);
+     g_sinGwMask = std::sin(gwMaskDeg * M_PI / 180.0);
+ 
+@@ -462,6 +593,47 @@
+     g_gw = ReadSites(gwFile, 1000);
+     const uint32_t S = g_sats.size(), D = g_dev.size(), G = g_gw.size();
+     NS_ABORT_MSG_UNLESS(S > 0 && D > 0 && G > 0, "empty scenario");
++    g_upCredit.assign(S, 0.0);
++    g_rrNext.assign(S, 0);
++    if (monitorList > 0 && monitorList < S)
++    {
++        std::mt19937 gen(monitorSeed);
++        g_allowed.assign(D, std::vector<bool>(S, false));
++        std::vector<uint32_t> ids(S);
++        std::iota(ids.begin(), ids.end(), 0u);
++        for (uint32_t d = 0; d < D; ++d)
++        {
++            std::shuffle(ids.begin(), ids.end(), gen);
++            for (uint32_t i = 0; i < monitorList; ++i)
++            {
++                g_allowed[d][ids[i]] = true;
++            }
++        }
++    }
++    if (!lifetimeCsv.empty())
++    {
++        std::ifstream lf(lifetimeCsv);
++        NS_ABORT_MSG_UNLESS(lf.good(), "cannot open " << lifetimeCsv);
++        std::vector<double> life;
++        double v;
++        while (lf >> v)
++        {
++            life.push_back(v);
++        }
++        NS_ABORT_MSG_UNLESS(life.size() >= D, "lifetimeCsv needs one line per device");
++        lifetimeH = *std::max_element(life.begin(), life.begin() + D);
++        lifetimeE2E = true;
++        g_lifeOffsetS.resize(D);
++        for (uint32_t d = 0; d < D; ++d)
++        {
++            g_lifeOffsetS[d] = (lifetimeH - life[d]) * 3600.0;
++        }
++    }
++    if (!occLog.empty())
++    {
++        g_occ.open(occLog);
++        g_occ << "t_s,sat,in_custody\n";
++    }
+ 
+     NodeContainer devN, satN, gwN, srvN;
+     devN.Create(D);
+@@ -477,6 +649,11 @@
+     PointToPointHelper p2p;
+     p2p.SetDeviceAttribute("DataRate", StringValue("1Mbps"));
+     p2p.SetChannelAttribute("Delay", StringValue("5ms"));
++    // A custody drain hands its whole backlog to UDP at one instant. With the default 100-packet device
++    // queue the excess waits in the fq_codel disc that Ipv4AddressHelper installs, and CoDel drops some of
++    // it after the custody queue has counted it as forwarded (12 of 17280 updates on Sateliot, five
++    // gateways, replication 0). A status report over a 1 Mb/s link has no congestion to control.
++    p2p.SetQueue("ns3::DropTailQueue<Packet>", "MaxSize", StringValue(std::to_string(macQueue) + "p"));
+     Ipv4AddressHelper ip;
+     uint32_t subnet = 0;
+     auto mkLink = [&](Ptr<Node> a, Ptr<Node> b) {
+@@ -537,7 +714,7 @@
+         q->SetCapacityBytes(1 << 30);
+         q->SetLifetime(lifetimeH > 0 ? Hours(lifetimeH) : Seconds(0));
+         q->SetForwardCallback([d](Ptr<Packet> p) { return DeviceForward(d, p); });
+-        if (keepNewest)
++        if (devKeepNewest)
+         {
+             q->SetReplaceSameSource(&SourceKey);
+         }
+@@ -560,7 +737,7 @@
+         // bent pipe: nothing is held on board
+         q->SetLifetime(g_policy == "bp" ? NanoSeconds(1) : (lifetimeH > 0 ? Hours(lifetimeH) : Seconds(0)));
+         q->SetForwardCallback([k](Ptr<Packet> p) { return SatelliteForward(k, p); });
+-        if (keepNewest)
++        if (satKeepNewest)
+         {
+             q->SetReplaceSameSource(&SourceKey);
+         }
+@@ -624,11 +801,36 @@
+         expDev += q->GetExpired();
+         dropDev += q->GetDroppedForSpace();
+     }
+-    std::cout << "sats=" << S << " devices=" << D << " gateways=" << G << " policy=" << g_policy
++    uint64_t leftSat = 0, leftDev = 0;
++    for (auto& q : g_satQ)
++    {
++        leftSat += q->GetInCustody();
++    }
++    for (auto& q : g_devQ)
++    {
++        leftDev += q->GetInCustody();
++    }
++    uint64_t macDrops = 0;
++    for (auto n = NodeList::Begin(); n != NodeList::End(); ++n)
++    {
++        for (uint32_t i = 0; i < (*n)->GetNDevices(); ++i)
++        {
++            Ptr<PointToPointNetDevice> nd = DynamicCast<PointToPointNetDevice>((*n)->GetDevice(i));
++            if (nd)
++            {
++                macDrops += nd->GetQueue()->GetTotalDroppedPackets();
++            }
++        }
++    }
++    std::cout << "mac_drops=" << macDrops << " left_sat=" << leftSat << " left_dev=" << leftDev << " sats=" << S << " devices=" << D << " gateways=" << G << " policy=" << g_policy
+               << " generated=" << g_generated << " replaced_sat=" << replSat << " replaced_dev=" << replDev
+               << " expired_sat=" << expSat << " expired_dev=" << expDev << " dropped_sat=" << dropSat
+               << " dropped_dev=" << dropDev << " out=" << out << "\n";
+     g_out.close();
++    if (g_occ.is_open())
++    {
++        g_occ.close();
++    }
+     Simulator::Destroy();
+     return 0;
+ }

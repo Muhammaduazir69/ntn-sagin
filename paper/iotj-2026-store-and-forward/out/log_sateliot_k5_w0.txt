@@ -1,0 +1,26 @@
+sateliot: device 25/150 1 s
+sateliot: device 50/150 1 s
+sateliot: device 75/150 2 s
+sateliot: device 100/150 2 s
+sateliot: device 125/150 3 s
+sateliot: device 150/150 4 s
+sateliot: done 4 s
+/home/uzair/6g_ntn_ns3/papers/paper6_iotj_sf_iot/sim/sf_analysis.py:156: RuntimeWarning: Mean of empty slice
+  sim=float(np.nanmean(ms)), sim_fe=float(np.nanmean(d["d_SFE"][sel])), sim_bp=float(np.nanmean(d["d_BP"][sel])),
+sateliot_k5_w0 cf   : fleet-mean error -37.2 %, median |err| 37.2 %, p90 |err| 46.7 %
+sateliot_k5_w0 half : fleet-mean error -65.3 %, median |err| 65.1 %, p90 |err| 70.8 %
+sateliot_k5_w0 semi : fleet-mean error +0.7 %, median |err| 3.4 %, p90 |err| 7.2 %
+sateliot_k5_w0 {'pred_mean': 18406.910922767824, 'pred_p95': 38774.558940882416, 'pred_p99': 42233.74634346208, 'sim_mean': 18291.13893611, 'sim_p95': 39123.699178942545, 'sim_p99': 43334.29707732277} {'bound_p99': 54.620000000000005, 'sim_new_p99': 48.0, 'sim_fcfs_p99': 687.7700000000001}
+sateliot: device 25/150 0 s
+sateliot: device 50/150 1 s
+sateliot: device 75/150 1 s
+sateliot: device 100/150 1 s
+sateliot: device 125/150 2 s
+sateliot: device 150/150 2 s
+sateliot: done 2 s
+/home/uzair/6g_ntn_ns3/papers/paper6_iotj_sf_iot/sim/sf_analysis.py:158: RuntimeWarning: Mean of empty slice
+  sim=float(np.nanmean(ms)), sim_fe=float(np.nanmean(d["d_SFE"][sel])), sim_bp=float(np.nanmean(d["d_BP"][sel])),
+sateliot_k5_w0 cf   : fleet-mean error -37.2 %, median |err| 37.2 %, p90 |err| 46.7 %
+sateliot_k5_w0 half : fleet-mean error -65.3 %, median |err| 65.1 %, p90 |err| 70.8 %
+sateliot_k5_w0 semi : fleet-mean error +0.7 %, median |err| 3.4 %, p90 |err| 7.2 %
+sateliot_k5_w0 {'pred_mean': 18406.910922767824, 'pred_p95': 38774.558940882416, 'pred_p99': 42233.74634346208, 'sim_mean': 18291.13893611, 'sim_p95': 39123.699178942545, 'sim_p99': 43334.29707732277} {'bound_p99': 55.0, 'pergap_violations': 0, 'pergap_n': 362, 'sim_new_p99': 54.389999999999986, 'sim_fcfs_p99': 777.7499999999983}

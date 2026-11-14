@@ -1,0 +1,122 @@
+[
+{
+"fleet": "orbcomm",
+"gw": "k5",
+"mode": "none",
+"loop_age": 1.169091869354163,
+"loop_up": 8241,
+"sim_age": 1.169091869354163,
+"sim_up": 8241,
+"failed": 0
+},
+{
+"fleet": "orbcomm",
+"gw": "k5",
+"mode": "lookup",
+"loop_age": 1.880627850569852,
+"loop_up": 2891,
+"sim_age": 1.880627850569852,
+"sim_up": 2891,
+"failed": 0
+},
+{
+"fleet": "orbcomm",
+"gw": "k5",
+"mode": "return",
+"loop_age": 1.9117463934629004,
+"loop_up": 2870,
+"sim_age": 1.9117463934629004,
+"sim_up": 2870,
+"failed": 5371
+},
+{
+"fleet": "kineis",
+"gw": "k5",
+"mode": "none",
+"loop_age": 0.8934866705976315,
+"loop_up": 9613,
+"sim_age": 0.8934866705976315,
+"sim_up": 9613,
+"failed": 0
+},
+{
+"fleet": "kineis",
+"gw": "k5",
+"mode": "lookup",
+"loop_age": 1.2087348682297498,
+"loop_up": 4800,
+"sim_age": 1.2087348682297498,
+"sim_up": 4800,
+"failed": 0
+},
+{
+"fleet": "kineis",
+"gw": "k5",
+"mode": "return",
+"loop_age": 1.2070230321294788,
+"loop_up": 4809,
+"sim_age": 1.2070230321294788,
+"sim_up": 4809,
+"failed": 4673
+},
+{
+"fleet": "sateliot",
+"gw": "k5",
+"mode": "none",
+"loop_age": 5.41492037983766,
+"loop_up": 1569,
+"sim_age": 5.41492037983766,
+"sim_up": 1569,
+"failed": 0
+},
+{
+"fleet": "sateliot",
+"gw": "k5",
+"mode": "lookup",
+"loop_age": 5.768489150920405,
+"loop_up": 931,
+"sim_age": 5.768489150920405,
+"sim_up": 931,
+"failed": 0
+},
+{
+"fleet": "sateliot",
+"gw": "k5",
+"mode": "return",
+"loop_age": 5.771450656310972,
+"loop_up": 924,
+"sim_age": 5.771450656310972,
+"sim_up": 924,
+"failed": 553
+},
+{
+"fleet": "orbcomm",
+"gw": "aws11",
+"mode": "none",
+"loop_age": 0.6655727047268728,
+"loop_up": 8241,
+"sim_age": 0.6655727047268728,
+"sim_up": 8241,
+"failed": 0
+},
+{
+"fleet": "orbcomm",
+"gw": "aws11",
+"mode": "lookup",
+"loop_age": 0.7642151413959647,
+"loop_up": 6784,
+"sim_age": 0.7642151413959647,
+"sim_up": 6784,
+"failed": 0
+},
+{
+"fleet": "orbcomm",
+"gw": "aws11",
+"mode": "return",
+"loop_age": 0.7683969655906866,
+"loop_up": 6710,
+"sim_age": 0.7683969655906866,
+"sim_up": 6710,
+"failed": 2147
+}
+]

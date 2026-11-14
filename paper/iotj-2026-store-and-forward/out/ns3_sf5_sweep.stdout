@@ -1,0 +1,17 @@
+15 runs to do; binary 0d876d7e5460ba46e30a9acc56ed04bd6cb18708804f17006f3fdd0a75b8d7a8
+17:49:01 1/15 upsweep sateliot 919 fcfs 0 aoi 5.43 served 1.000 del 1.000 142.4s free 4.6G
+17:49:14 2/15 upsweep sateliot 919 fcfs 0 aoi 6.46 served 1.000 del 1.000 156.2s free 4.6G
+17:49:42 3/15 upsweep sateliot 919 fcfs 0 aoi 10.65 served 1.000 del 0.928 183.4s free 4.6G
+17:51:05 4/15 upsweep sateliot 919 fcfs 1 aoi 10.65 served 1.000 del 0.928 124.6s free 4.6G
+17:52:11 5/15 upsweep sateliot 919 fcfs 1 aoi 6.46 served 1.000 del 1.000 176.1s free 4.6G
+17:52:40 6/15 upsweep sateliot 919 fcfs 1 aoi 5.43 served 1.000 del 1.000 178.0s free 4.6G
+17:53:07 7/15 upsweep sateliot 919 fcfs 2 aoi 10.65 served 1.000 del 0.928 121.6s free 4.6G
+17:55:25 8/15 upsweep sateliot 919 fcfs 3 aoi 10.65 served 1.000 del 0.928 137.8s free 4.6G
+17:55:42 9/15 upsweep sateliot 919 fcfs 2 aoi 6.45 served 1.000 del 1.000 211.4s free 4.6G
+17:55:53 10/15 upsweep sateliot 919 fcfs 2 aoi 5.43 served 1.000 del 1.000 193.7s free 4.6G
+17:57:24 11/15 upsweep sateliot 919 fcfs 3 aoi 6.46 served 1.000 del 1.000 118.8s free 4.3G
+18:05:06 12/15 upsweep sateliot 919 fcfs 3 aoi 5.43 served 1.000 del 1.000 564.2s free 4.3G
+18:06:10 13/15 upsweep sateliot 919 fcfs 4 aoi 10.65 served 1.000 del 0.928 613.7s free 4.2G
+18:06:19 14/15 upsweep sateliot 919 fcfs 4 aoi 6.46 served 1.000 del 1.000 535.4s free 4.2G
+18:08:31 15/15 upsweep sateliot 919 fcfs 4 aoi 5.43 served 1.000 del 1.000 204.8s free 3.9G
+END complete

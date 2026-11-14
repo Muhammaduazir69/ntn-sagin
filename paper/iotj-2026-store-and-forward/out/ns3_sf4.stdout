@@ -1,0 +1,27 @@
+25 runs to do; binary 824142ca91deb280a18eb994032e83f6c784db4be12de6159ea016d8ad932d63
+06:41:36 1/25 upall sateliot k5 sf1 fcfs rep0 ok 117.8s free 5.6G
+06:43:36 2/25 upall sateliot k5 sf1 lcfs rep0 ok 237.2s free 5.6G
+06:50:31 3/25 uplong sateliot k5 sf1 newest rep0 ok 414.5s free 5.5G
+06:53:59 4/25 uplong sateliot k5 sf1 fcfs rep0 ok 858.6s free 5.4G
+06:54:43 5/25 upall sateliot k5 sf1 lcfs rep1 ok 251.6s free 5.4G
+06:55:39 6/25 uplong sateliot k5 sf1 lcfs rep0 ok 841.0s free 5.4G
+06:56:02 7/25 upall sateliot k5 sf1 fcfs rep1 ok 123.2s free 5.4G
+07:01:29 8/25 uplong sateliot k5 sf1 newest rep1 ok 327.2s free 5.3G
+07:04:17 9/25 upall sateliot k5 sf1 lcfs rep2 ok 167.4s free 5.3G
+07:05:47 10/25 uplong sateliot k5 sf1 fcfs rep1 ok 663.1s free 5.3G
+07:05:49 11/25 upall sateliot k5 sf1 fcfs rep2 ok 91.9s free 5.3G
+07:06:43 12/25 uplong sateliot k5 sf1 lcfs rep1 ok 662.8s free 5.3G
+07:11:42 13/25 uplong sateliot k5 sf1 newest rep2 ok 298.0s free 5.3G
+07:14:28 14/25 upall sateliot k5 sf1 lcfs rep3 ok 166.4s free 5.3G
+07:15:54 15/25 upall sateliot k5 sf1 fcfs rep3 ok 86.0s free 5.3G
+07:16:08 16/25 uplong sateliot k5 sf1 lcfs rep2 ok 617.5s free 5.3G
+07:16:10 17/25 uplong sateliot k5 sf1 fcfs rep2 ok 621.5s free 5.3G
+07:21:10 18/25 uplong sateliot k5 sf1 newest rep3 ok 299.7s free 5.3G
+07:23:46 19/25 upall sateliot k5 sf1 lcfs rep4 ok 155.1s free 5.3G
+07:25:12 20/25 upall sateliot k5 sf1 fcfs rep4 ok 85.8s free 5.3G
+07:26:26 21/25 uplong sateliot k5 sf1 lcfs rep3 ok 617.0s free 5.3G
+07:26:29 22/25 uplong sateliot k5 sf1 fcfs rep3 ok 633.4s free 5.3G
+07:31:27 23/25 uplong sateliot k5 sf1 newest rep4 ok 297.6s free 5.3G
+07:35:15 24/25 uplong sateliot k5 sf1 fcfs rep4 ok 603.1s free 5.3G
+07:36:29 25/25 uplong sateliot k5 sf1 lcfs rep4 ok 602.3s free 5.3G
+END complete
