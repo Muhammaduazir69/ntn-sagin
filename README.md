@@ -3,6 +3,13 @@
 <p align="center"><strong>Space-air-ground integrated networking: ground, UAV, HAPS and LEO layers, a router that has to choose between them, and custody across contact gaps</strong></p>
 
 <p align="center">
+  <a href="https://youtu.be/JNStiBst68I"><img src="https://img.youtube.com/vi/JNStiBst68I/maxresdefault.jpg" alt="NTN Control Center: end-to-end simulation of non-terrestrial networks in ns-3 (video)" width="560"/></a><br/>
+  <a href="https://youtu.be/JNStiBst68I"><img src="https://img.shields.io/badge/YouTube-Watch%20the%205--minute%20demo-red?logo=youtube" alt="Watch on YouTube"/></a><br/>
+  <sub>The NTN Control Center runs and visualizes the ntn-sagin examples on a live 3D globe (5-minute video).</sub>
+</p>
+
+
+<p align="center">
   <a href="https://www.nsnam.org"><img src="https://img.shields.io/badge/ns--3-3.43-blue.svg" alt="ns-3.43"/></a>
   <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html"><img src="https://img.shields.io/badge/license-GPL--2.0-green.svg" alt="GPL-2.0"/></a>
   <img src="https://img.shields.io/badge/3GPP-TR%2036.777%20A2G-orange.svg" alt="3GPP TR 36.777 air-to-ground"/>
