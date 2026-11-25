@@ -1600,8 +1600,8 @@ main(int argc, char* argv[])
     g_e2eMon->SetAttribute("FlowInterruptionsBinWidth", DoubleValue(3600.0));
     g_e2eCls = Create<NtnOranFlowClassifier>();
     g_e2eMon->AddFlowClassifier(g_e2eCls);
-    g_e2eTx = Create<NtnOranFlowProbe>(g_e2eMon, g_e2eCls, "device");
-    g_e2eRx = Create<NtnOranFlowProbe>(g_e2eMon, g_e2eCls, "server");
+    g_e2eTx = CreateObject<NtnOranFlowProbe>(g_e2eMon, g_e2eCls, "device");
+    g_e2eRx = CreateObject<NtnOranFlowProbe>(g_e2eMon, g_e2eCls, "server");
     g_e2eMon->Start(Seconds(0));
     // Per-hop IPv4 FlowMonitor on every node.
     FlowMonitorHelper fmh;
